@@ -77,10 +77,12 @@ export async function POST(request: NextRequest) {
     Based on the resume and job details, write a compelling and professional cover letter. The letter should highlight the user's most relevant skills and experiences, express enthusiasm for the role, and include a clear call to action. Address it to "Hiring Manager" if no specific contact is available. Keep it concise and impactful, around 3-4 paragraphs. Format it as clean markdown.
     `;
 
-    const model = ai.models.get('gemini-2.0-flash-exp');
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const feedback = response.text();
+    const result = await ai.models.generateContent({
+      model: 'gemini-2.0-flash-exp',
+      contents: prompt,
+    });
+
+    const feedback = result.text;
 
     return NextResponse.json({ feedback });
   } catch (error) {

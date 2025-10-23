@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -37,43 +37,14 @@ const createCheckoutSession = async (priceId: string) => {
   return await response.json();
 };
 
-export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onSuccess, price }) => {
+export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, price }) => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const checkoutRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const stripeCheckoutRef = useRef<any>(null);
 
-  useEffect(() => {
-    if (!isOpen) {
-      if (stripeCheckoutRef.current) {
-        stripeCheckoutRef.current.destroy();
-        stripeCheckoutRef.current = null;
-      }
-      return;
-    }
-
-    initializeCheckout();
-
-    return () => {
-      if (stripeCheckoutRef.current) {
-        stripeCheckoutRef.current.destroy();
-        stripeCheckoutRef.current = null;
-      }
-    };
-  }, [isOpen]);
-
-  const loadStripe = async () => {
-    if (!(window as any).Stripe) {
-      const script = document.createElement('script');
-      script.src = 'https://js.stripe.com/v3/';
-      script.async = true;
-      document.head.appendChild(script);
-      await new Promise((resolve) => { script.onload = resolve; });
-    }
-    return (window as any).Stripe(STRIPE_PUBLISHABLE_KEY);
-  };
-
-  const initializeCheckout = async () => {
+  const initializeCheckout = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -111,11 +82,43 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onS
       } else {
         console.error('checkoutRef.current is null, cannot mount checkout');
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Checkout error:', err);
-      setError(err.message || 'Failed to initialize payment');
+      setError(err instanceof Error ? err.message : 'Failed to initialize payment');
       setIsLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) {
+      if (stripeCheckoutRef.current) {
+        stripeCheckoutRef.current.destroy();
+        stripeCheckoutRef.current = null;
+      }
+      return;
+    }
+
+    initializeCheckout();
+
+    return () => {
+      if (stripeCheckoutRef.current) {
+        stripeCheckoutRef.current.destroy();
+        stripeCheckoutRef.current = null;
+      }
+    };
+  }, [isOpen, initializeCheckout]);
+
+  const loadStripe = async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (!(window as any).Stripe) {
+      const script = document.createElement('script');
+      script.src = 'https://js.stripe.com/v3/';
+      script.async = true;
+      document.head.appendChild(script);
+      await new Promise((resolve) => { script.onload = resolve; });
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (window as any).Stripe(STRIPE_PUBLISHABLE_KEY);
   };
 
   if (!isOpen) return null;
@@ -152,7 +155,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onS
           ) : (
             <div ref={checkoutRef} className="min-h-[400px]" style={{
               // Hide any payment link buttons that might confuse users
-              // @ts-ignore
+              // @ts-expect-error - Stripe custom CSS variable
               '--stripe-payment-link-display': 'none'
             }}></div>
           )}

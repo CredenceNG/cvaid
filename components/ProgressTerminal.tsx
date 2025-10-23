@@ -23,10 +23,17 @@ export const ProgressTerminal: React.FC<ProgressTerminalProps> = ({ isVisible })
   const [visibleSteps, setVisibleSteps] = useState<number[]>([]);
   const [currentStep, setCurrentStep] = useState(0);
 
+  // Reset state when visibility changes
   useEffect(() => {
     if (!isVisible) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setVisibleSteps([]);
       setCurrentStep(0);
+    }
+  }, [isVisible]);
+
+  useEffect(() => {
+    if (!isVisible) {
       return;
     }
 

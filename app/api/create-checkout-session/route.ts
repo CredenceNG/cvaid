@@ -43,10 +43,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       clientSecret: session.client_secret,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error creating checkout session:', error);
     return NextResponse.json(
-      { error: error.message },
+      { error: error instanceof Error ? error.message : 'Unknown error occurred' },
       { status: 500 }
     );
   }

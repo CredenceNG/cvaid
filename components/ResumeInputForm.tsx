@@ -22,7 +22,7 @@ const waitForLibrary = <T,>(libraryName: string, timeout = 5000): Promise<T> => 
     const checkInterval = 100;
 
     const check = () => {
-      const lib = (window as any)[libraryName];
+      const lib = (window as unknown as Record<string, T>)[libraryName];
       if (lib) {
         resolve(lib);
       } else if (Date.now() - startTime > timeout) {
@@ -62,6 +62,7 @@ export const ResumeInputForm: React.FC<ResumeInputFormProps> = ({
     try {
       let text = '';
       if (file.type === 'application/pdf') {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const pdfjsLib = await waitForLibrary<any>('pdfjsLib');
         pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js`;
         const reader = new FileReader();
@@ -75,7 +76,7 @@ export const ResumeInputForm: React.FC<ResumeInputFormProps> = ({
                     for (let i = 1; i <= pdf.numPages; i++) {
                         const page = await pdf.getPage(i);
                         const content = await page.getTextContent();
-                        fullText += content.items.map((item: any) => item.str).join(' ') + '\n';
+                        fullText += content.items.map((item: { str: string }) => item.str).join(' ') + '\n';
                     }
                     resolve(fullText);
                 } catch (e) {
@@ -86,6 +87,7 @@ export const ResumeInputForm: React.FC<ResumeInputFormProps> = ({
         });
 
       } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || file.name.endsWith('.docx')) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const mammoth = await waitForLibrary<any>('mammoth');
         const reader = new FileReader();
         reader.readAsArrayBuffer(file);

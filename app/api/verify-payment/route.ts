@@ -33,10 +33,10 @@ export async function POST(request: NextRequest) {
         paymentStatus: session.payment_status,
       });
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error verifying payment:', error);
     return NextResponse.json(
-      { error: error.message },
+      { error: error instanceof Error ? error.message : 'Unknown error occurred' },
       { status: 500 }
     );
   }
