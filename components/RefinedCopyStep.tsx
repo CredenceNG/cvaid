@@ -107,12 +107,14 @@ export const RefinedCopyStep: React.FC<RefinedCopyStepProps> = ({ refinedCopy, f
             if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
               const text = line.trim().substring(2);
               const parts = text.split(/(\*\*.*?\*\*)/);
-              const runs = parts.map(part => {
-                if (part.startsWith('**') && part.endsWith('**')) {
-                  return new TextRun({ text: part.slice(2, -2), bold: true });
-                }
-                return new TextRun({ text: part });
-              }).filter(run => run.text);
+              const runs = parts
+                .filter(part => part.length > 0)
+                .map(part => {
+                  if (part.startsWith('**') && part.endsWith('**')) {
+                    return new TextRun({ text: part.slice(2, -2), bold: true });
+                  }
+                  return new TextRun({ text: part });
+                });
 
               return new Paragraph({ children: runs, bullet: { level: 0 } });
             }
@@ -122,12 +124,14 @@ export const RefinedCopyStep: React.FC<RefinedCopyStepProps> = ({ refinedCopy, f
 
             // Handle regular text with bold formatting
             const parts = line.split(/(\*\*.*?\*\*)/);
-            const runs = parts.map(part => {
-              if (part.startsWith('**') && part.endsWith('**')) {
-                return new TextRun({ text: part.slice(2, -2), bold: true });
-              }
-              return new TextRun({ text: part });
-            }).filter(run => run.text);
+            const runs = parts
+              .filter(part => part.length > 0)
+              .map(part => {
+                if (part.startsWith('**') && part.endsWith('**')) {
+                  return new TextRun({ text: part.slice(2, -2), bold: true });
+                }
+                return new TextRun({ text: part });
+              });
 
             return new Paragraph({ children: runs.length > 0 ? runs : [new TextRun({ text: line })] });
           });
