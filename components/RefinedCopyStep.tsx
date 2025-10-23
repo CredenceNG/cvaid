@@ -31,27 +31,38 @@ export const RefinedCopyStep: React.FC<RefinedCopyStepProps> = ({ refinedCopy, f
           const baseFontSize = 11;
           const lineHeight = baseFontSize * 0.5;
           let y = margin;
-    
+
           const checkPageBreak = (neededHeight: number) => {
             if (y + neededHeight > doc.internal.pageSize.getHeight() - margin) {
               doc.addPage();
               y = margin;
             }
           };
-          
+
+          // Strip markdown formatting
+          const stripMarkdown = (text: string): string => {
+            return text
+              .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold **text**
+              .replace(/\*(.*?)\*/g, '$1')     // Remove italic *text*
+              .replace(/`(.*?)`/g, '$1')       // Remove inline code `text`
+              .replace(/\[(.*?)\]\(.*?\)/g, '$1'); // Remove links [text](url)
+          };
+
           doc.setFont('helvetica', 'normal');
           doc.setFontSize(baseFontSize);
-    
+
           for (const line of content.split('\n')) {
             if (line.trim() === '') { checkPageBreak(lineHeight); y += lineHeight; continue; }
             let text = line, currentFontSize = baseFontSize;
-            doc.setFont('helvetica', line.startsWith('### ') || line.startsWith('## ') || line.startsWith('# ') ? 'bold' : 'normal');
-            if (line.startsWith('# ')) { currentFontSize = 18; text = line.substring(2); }
-            else if (line.startsWith('## ')) { currentFontSize = 16; text = line.substring(3); }
-            else if (line.startsWith('### ')) { currentFontSize = 14; text = line.substring(4); }
+            const isBold = line.startsWith('### ') || line.startsWith('## ') || line.startsWith('# ') || line.includes('**');
+            doc.setFont('helvetica', isBold ? 'bold' : 'normal');
+            if (line.startsWith('# ')) { currentFontSize = 18; text = stripMarkdown(line.substring(2)); }
+            else if (line.startsWith('## ')) { currentFontSize = 16; text = stripMarkdown(line.substring(3)); }
+            else if (line.startsWith('### ')) { currentFontSize = 14; text = stripMarkdown(line.substring(4)); }
+            else { text = stripMarkdown(line); }
             doc.setFontSize(currentFontSize);
-            const isListItem = line.trim().startsWith('- ') || line.trim().startsWith('* ');
-            if (isListItem) text = `• ${line.trim().substring(2)}`;
+            const isListItem = text.trim().startsWith('- ') || text.trim().startsWith('* ');
+            if (isListItem) text = `• ${text.trim().substring(2)}`;
             const textLines = doc.splitTextToSize(text, maxLineWidth);
             const neededHeight = textLines.length * (currentFontSize * 0.5);
             checkPageBreak(neededHeight);
@@ -70,15 +81,57 @@ export const RefinedCopyStep: React.FC<RefinedCopyStepProps> = ({ refinedCopy, f
         setIsDownloading(filename);
         try {
           const { Document, Packer, Paragraph, TextRun, HeadingLevel } = await import('docx');
+
           const parseMarkdown = (text: string) => text.split('\n').map(line => {
-            if (line.startsWith('# ')) return new Paragraph({ text: line.substring(2), heading: HeadingLevel.HEADING_1 });
-            if (line.startsWith('## ')) return new Paragraph({ text: line.substring(3), heading: HeadingLevel.HEADING_2 });
-            if (line.startsWith('### ')) return new Paragraph({ text: line.substring(4), heading: HeadingLevel.HEADING_3 });
-            if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) return new Paragraph({ text: line.trim().substring(2), bullet: { level: 0 } });
+            // Handle headings
+            if (line.startsWith('# ')) {
+              return new Paragraph({
+                text: line.substring(2).replace(/\*\*(.*?)\*\*/g, '$1'),
+                heading: HeadingLevel.HEADING_1
+              });
+            }
+            if (line.startsWith('## ')) {
+              return new Paragraph({
+                text: line.substring(3).replace(/\*\*(.*?)\*\*/g, '$1'),
+                heading: HeadingLevel.HEADING_2
+              });
+            }
+            if (line.startsWith('### ')) {
+              return new Paragraph({
+                text: line.substring(4).replace(/\*\*(.*?)\*\*/g, '$1'),
+                heading: HeadingLevel.HEADING_3
+              });
+            }
+
+            // Handle bullet points
+            if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
+              const text = line.trim().substring(2);
+              const parts = text.split(/(\*\*.*?\*\*)/);
+              const runs = parts.map(part => {
+                if (part.startsWith('**') && part.endsWith('**')) {
+                  return new TextRun({ text: part.slice(2, -2), bold: true });
+                }
+                return new TextRun({ text: part });
+              }).filter(run => run.text);
+
+              return new Paragraph({ children: runs, bullet: { level: 0 } });
+            }
+
+            // Handle empty lines
             if (line.trim() === '') return new Paragraph({ text: '' });
-            const runs = line.split('**').map((part, i) => new TextRun({ text: part, bold: i % 2 !== 0 })).filter(p => p);
-            return new Paragraph({ children: runs });
+
+            // Handle regular text with bold formatting
+            const parts = line.split(/(\*\*.*?\*\*)/);
+            const runs = parts.map(part => {
+              if (part.startsWith('**') && part.endsWith('**')) {
+                return new TextRun({ text: part.slice(2, -2), bold: true });
+              }
+              return new TextRun({ text: part });
+            }).filter(run => run.text);
+
+            return new Paragraph({ children: runs.length > 0 ? runs : [new TextRun({ text: line })] });
           });
+
           const doc = new Document({ sections: [{ children: parseMarkdown(content) }] });
           const blob = await Packer.toBlob(doc);
           const link = document.createElement('a');
