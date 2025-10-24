@@ -210,11 +210,25 @@ function CheckoutForm({ clientSecret }: { clientSecret: string }) {
   const router = useRouter();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isReady, setIsReady] = useState(false);
+
+  // Wait for PaymentElement to be ready
+  useEffect(() => {
+    if (!elements) return;
+
+    const paymentElement = elements.getElement('payment');
+    if (paymentElement) {
+      setIsReady(true);
+    }
+  }, [elements]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!stripe || !elements) return;
+    if (!stripe || !elements) {
+      console.error('Stripe or Elements not loaded');
+      return;
+    }
 
     setIsProcessing(true);
     setError(null);
@@ -249,10 +263,15 @@ function CheckoutForm({ clientSecret }: { clientSecret: string }) {
 
       <button
         type="submit"
-        disabled={!stripe || isProcessing}
+        disabled={!stripe || !isReady || isProcessing}
         className="w-full py-4 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-xl transition-all flex items-center justify-center gap-2"
       >
-        {isProcessing ? (
+        {!isReady ? (
+          <>
+            <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
+            Loading payment form...
+          </>
+        ) : isProcessing ? (
           <>
             <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
             Processing...
