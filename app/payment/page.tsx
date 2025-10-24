@@ -7,12 +7,11 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { ArrowLeft, Shield, CreditCard, Check } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 
 // Load Stripe with publishable key
 // NOTE: Turbopack in Next.js 16 has a caching bug where it loads stale NEXT_PUBLIC_ env var values
@@ -145,7 +144,7 @@ export default function PaymentPage() {
                 },
               }}
             >
-              <CheckoutForm clientSecret={clientSecret} />
+              <CheckoutForm />
             </Elements>
           </div>
 
@@ -214,10 +213,9 @@ export default function PaymentPage() {
 /**
  * Stripe Checkout Form Component
  */
-function CheckoutForm({ clientSecret }: { clientSecret: string }) {
+function CheckoutForm() {
   const stripe = useStripe();
   const elements = useElements();
-  const router = useRouter();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
@@ -245,8 +243,8 @@ function CheckoutForm({ clientSecret }: { clientSecret: string }) {
       if (error) {
         setError(error.message || 'Payment failed');
       }
-    } catch (error: any) {
-      setError(error.message || 'An unexpected error occurred');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'An unexpected error occurred');
     } finally {
       setIsProcessing(false);
     }
@@ -255,8 +253,8 @@ function CheckoutForm({ clientSecret }: { clientSecret: string }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <PaymentElement
-        onLoadError={(error) => {
-          const errorMsg = error?.message || 'Unable to load payment form';
+        onLoadError={(event) => {
+          const errorMsg = event.error?.message || 'Unable to load payment form';
           setError(errorMsg);
         }}
         onReady={() => {
