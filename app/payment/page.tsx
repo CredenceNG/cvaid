@@ -138,7 +138,7 @@ function PaymentContent() {
                 },
               }}
             >
-              <CheckoutForm />
+              <CheckoutForm clientSecret={clientSecret} />
             </Elements>
           </div>
 
@@ -213,7 +213,7 @@ function PaymentContent() {
 /**
  * Stripe Checkout Form Component
  */
-function CheckoutForm() {
+function CheckoutForm({ clientSecret }: { clientSecret: string }) {
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
