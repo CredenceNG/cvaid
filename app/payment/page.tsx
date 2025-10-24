@@ -8,7 +8,7 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { ArrowLeft, Shield, CreditCard, Check } from 'lucide-react';
@@ -138,7 +138,7 @@ function PaymentContent() {
                 },
               }}
             >
-              <CheckoutForm clientSecret={clientSecret} />
+              <CheckoutForm />
             </Elements>
           </div>
 
@@ -213,10 +213,9 @@ function PaymentContent() {
 /**
  * Stripe Checkout Form Component
  */
-function CheckoutForm({ clientSecret }: { clientSecret: string }) {
+function CheckoutForm() {
   const stripe = useStripe();
   const elements = useElements();
-  const router = useRouter();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -239,8 +238,8 @@ function CheckoutForm({ clientSecret }: { clientSecret: string }) {
       if (error) {
         setError(error.message || 'Payment failed');
       }
-    } catch (error: any) {
-      setError(error.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Payment failed');
     } finally {
       setIsProcessing(false);
     }
