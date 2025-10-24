@@ -7,22 +7,19 @@
 
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { ArrowLeft, Shield, CreditCard, Check } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
-function PaymentContent() {
-  const searchParams = useSearchParams();
+export default function PaymentPage() {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [isCreatingPayment, setIsCreatingPayment] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Get email from query params if provided
-  const email = searchParams.get('email');
 
   useEffect(() => {
     const createPaymentIntent = async () => {
@@ -33,7 +30,7 @@ function PaymentContent() {
         const response = await fetch('/api/payment/create-intent', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: email || undefined }),
+          body: JSON.stringify({ email: undefined }),
         });
 
         if (!response.ok) {
@@ -51,7 +48,7 @@ function PaymentContent() {
     };
 
     createPaymentIntent();
-  }, [email]);
+  }, []);
 
   if (isCreatingPayment) {
     return (
@@ -138,7 +135,7 @@ function PaymentContent() {
                 },
               }}
             >
-              <CheckoutForm />
+              <CheckoutForm clientSecret={clientSecret} />
             </Elements>
           </div>
 
@@ -148,19 +145,13 @@ function PaymentContent() {
               <h3 className="text-xl font-bold text-white mb-6">Order Summary</h3>
 
               <div className="space-y-4 mb-6">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-semibold text-white">Resume Analysis</p>
-                    <p className="text-sm text-slate-400">Full AI-powered feedback & refined copy</p>
-                  </div>
-                  <p className="text-white font-bold">$5.00</p>
+                <div className="flex justify-between items-center pb-4 border-b border-slate-700">
+                  <span className="text-slate-300">Resume Analysis</span>
+                  <span className="text-white font-semibold">$5.00</span>
                 </div>
-              </div>
-
-              <div className="border-t border-slate-700 pt-4">
-                <div className="flex justify-between items-center text-lg font-bold">
-                  <span className="text-white">Total</span>
-                  <span className="text-cyan-400">$5.00</span>
+                <div className="flex justify-between items-center text-lg">
+                  <span className="text-white font-bold">Total</span>
+                  <span className="text-cyan-400 font-bold">$5.00</span>
                 </div>
               </div>
             </div>
@@ -175,28 +166,28 @@ function PaymentContent() {
                 </div>
                 <div className="flex items-start gap-3">
                   <Check className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-                  <span className="text-slate-300">Completely rewritten resume copy</span>
+                  <span className="text-slate-300">AI-powered improvement recommendations</span>
                 </div>
                 <div className="flex items-start gap-3">
                   <Check className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-                  <span className="text-slate-300">Professional cover letter draft</span>
+                  <span className="text-slate-300">Refined resume copy with enhancements</span>
                 </div>
                 <div className="flex items-start gap-3">
                   <Check className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-                  <span className="text-slate-300">Tailored for your target role</span>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Check className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-                  <span className="text-slate-300">Download as PDF or DOCX</span>
+                  <span className="text-slate-300">Download in multiple formats</span>
                 </div>
               </div>
             </div>
 
             {/* Trust Indicators */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 text-center">
                 <Shield className="h-8 w-8 text-green-500 mx-auto mb-2" />
                 <p className="text-xs text-slate-400">Secure Payment</p>
+              </div>
+              <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 text-center">
+                <Check className="h-8 w-8 text-cyan-500 mx-auto mb-2" />
+                <p className="text-xs text-slate-400">Instant Access</p>
               </div>
               <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 text-center">
                 <CreditCard className="h-8 w-8 text-cyan-500 mx-auto mb-2" />
@@ -213,9 +204,10 @@ function PaymentContent() {
 /**
  * Stripe Checkout Form Component
  */
-function CheckoutForm() {
+function CheckoutForm({ clientSecret }: { clientSecret: string }) {
   const stripe = useStripe();
   const elements = useElements();
+  const router = useRouter();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -238,8 +230,8 @@ function CheckoutForm() {
       if (error) {
         setError(error.message || 'Payment failed');
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Payment failed');
+    } catch (error: any) {
+      setError(error.message);
     } finally {
       setIsProcessing(false);
     }
@@ -278,17 +270,5 @@ function CheckoutForm() {
         Payment processed securely by Stripe.
       </p>
     </form>
-  );
-}
-
-export default function PaymentPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="animate-spin h-12 w-12 border-4 border-cyan-500 border-t-transparent rounded-full" />
-      </div>
-    }>
-      <PaymentContent />
-    </Suspense>
   );
 }
