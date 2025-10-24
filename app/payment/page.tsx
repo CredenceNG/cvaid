@@ -8,7 +8,7 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { ArrowLeft, Shield, CreditCard, Check } from 'lucide-react';
@@ -216,6 +216,7 @@ function PaymentContent() {
 function CheckoutForm({ clientSecret }: { clientSecret: string }) {
   const stripe = useStripe();
   const elements = useElements();
+  const router = useRouter();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -228,19 +229,19 @@ function CheckoutForm({ clientSecret }: { clientSecret: string }) {
     setError(null);
 
     try {
-      const { error: confirmError } = await stripe.confirmPayment({
+      const { error } = await stripe.confirmPayment({
         elements,
         confirmParams: {
-          return_url: `${window.location.origin}/payment/success`,
-        },
+          return_url: `${window.location.origin}/payment/success`
+        }
       });
 
-      if (confirmError) {
-        setError(confirmError.message || 'Payment failed');
-        setIsProcessing(false);
+      if (error) {
+        setError(error.message || 'Payment failed');
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+    } catch (error: any) {
+      setError(error.message);
+    } finally {
       setIsProcessing(false);
     }
   };
