@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { ResumeInputForm } from '@/components/ResumeInputForm';
 import { Footer } from '@/components/Footer';
@@ -8,7 +9,6 @@ import { WizardPlaceholder } from '@/components/WizardPlaceholder';
 import { SummaryStep } from '@/components/SummaryStep';
 import { DetailsStep } from '@/components/DetailsStep';
 import { RefinedCopyStep } from '@/components/RefinedCopyStep';
-import { PaymentModal } from '@/components/PaymentModal';
 import { CoverLetterStep } from '@/components/CoverLetterStep';
 
 type Step = 'input' | 'summary' | 'details' | 'refined' | 'coverLetter';
@@ -66,6 +66,7 @@ const verifyPayment = async (sessionId: string) => {
 };
 
 export default function Home() {
+  const router = useRouter();
   const [resume, setResume] = useState<string>('');
   const [goals, setGoals] = useState<string>('');
   const [requirements, setRequirements] = useState<string>('');
@@ -80,7 +81,6 @@ export default function Home() {
   const [coverLetter, setCoverLetter] = useState('');
 
   const [isUnlocked, setIsUnlocked] = useState(false);
-  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
   const resultsRef = useRef<HTMLDivElement>(null);
 
@@ -291,25 +291,9 @@ export default function Home() {
   };
 
   const handleUnlock = () => {
-    setIsPaymentModalOpen(false);
-    setIsUnlocked(true);
-
-    try {
-      const savedStateJSON = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (savedStateJSON) {
-        const savedState = JSON.parse(savedStateJSON);
-        savedState.isUnlocked = true;
-        savedState.paymentTimestamp = new Date().toISOString();
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(savedState));
-      }
-    } catch (e) {
-      console.error("Failed to save unlock status", e);
-    }
-
-    setStep('details');
+    // Navigate to payment page
+    router.push('/payment');
   };
-
-  const TOKEN_PRICE_USD = 5;
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-200 flex flex-col font-sans">
@@ -340,7 +324,7 @@ export default function Home() {
               <DetailsStep
                 details={parsedResponse.details}
                 isUnlocked={isUnlocked}
-                onUnlock={() => setIsPaymentModalOpen(true)}
+                onUnlock={handleUnlock}
                 onNext={() => setStep('refined')}
                 onBack={() => setStep('summary')}
                 onStartOver={handleStartOver}
@@ -366,7 +350,7 @@ export default function Home() {
               <DetailsStep
                 details={parsedResponse.details}
                 isUnlocked={isUnlocked}
-                onUnlock={() => setIsPaymentModalOpen(true)}
+                onUnlock={handleUnlock}
                 onNext={() => setStep('refined')}
                 onBack={() => setStep('summary')}
                 onStartOver={handleStartOver}
@@ -376,12 +360,6 @@ export default function Home() {
         </div>
       </main>
       <Footer />
-      <PaymentModal
-        isOpen={isPaymentModalOpen}
-        onClose={() => setIsPaymentModalOpen(false)}
-        onSuccess={handleUnlock}
-        price={TOKEN_PRICE_USD}
-      />
     </div>
   );
 }
