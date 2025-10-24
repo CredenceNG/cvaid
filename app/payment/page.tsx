@@ -14,7 +14,17 @@ import { ArrowLeft, Shield, CreditCard, Check } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+// Load Stripe with publishable key
+// NOTE: Turbopack in Next.js 16 has a caching bug where it loads stale NEXT_PUBLIC_ env var values
+// We check if the env var contains a placeholder and use the correct fallback if needed
+// For Netlify production: Set NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY in environment variables
+const envKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+const isPlaceholder = !envKey || envKey.includes('your_') || envKey.includes('placeholder');
+const STRIPE_PUBLISHABLE_KEY = isPlaceholder
+  ? 'pk_test_51RbCRcGpNFb6poEprE9rjGrL1ErCMRGpNnNNdOCFTWG7ejTGAkHVPTH67lccdpv094ajI1ftGa2w1NqnxCPwVDee00ltDfVoDJ'
+  : envKey;
+
+const stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY);
 
 export default function PaymentPage() {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
@@ -212,21 +222,12 @@ function CheckoutForm({ clientSecret }: { clientSecret: string }) {
   const [error, setError] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
 
-  // Wait for PaymentElement to be ready
-  useEffect(() => {
-    if (!elements) return;
-
-    const paymentElement = elements.getElement('payment');
-    if (paymentElement) {
-      setIsReady(true);
-    }
-  }, [elements]);
+  // PaymentElement ready state is managed via onReady callback
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!stripe || !elements) {
-      console.error('Stripe or Elements not loaded');
       return;
     }
 
@@ -245,7 +246,7 @@ function CheckoutForm({ clientSecret }: { clientSecret: string }) {
         setError(error.message || 'Payment failed');
       }
     } catch (error: any) {
-      setError(error.message);
+      setError(error.message || 'An unexpected error occurred');
     } finally {
       setIsProcessing(false);
     }
@@ -253,7 +254,15 @@ function CheckoutForm({ clientSecret }: { clientSecret: string }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <PaymentElement />
+      <PaymentElement
+        onLoadError={(error) => {
+          const errorMsg = error?.message || 'Unable to load payment form';
+          setError(errorMsg);
+        }}
+        onReady={() => {
+          setIsReady(true);
+        }}
+      />
 
       {error && (
         <div className="p-3 bg-red-500/20 border border-red-500/50 rounded-lg">
