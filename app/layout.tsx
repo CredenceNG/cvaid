@@ -8,8 +8,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Resume Optimizer AI",
-  description: "AI-powered resume analysis and optimization tool",
+  title: "Resumaizer - AI-Powered Resume Optimization",
+  description: "Transform your resume with AI-powered insights. Get expert-level feedback, refined copy, and custom cover letters in minutes. Land more interviews at top companies.",
 };
 
 export default function RootLayout({
