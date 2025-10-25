@@ -290,7 +290,22 @@ export default function Home() {
     setStep('input');
   };
 
-  const handleUnlock = () => {
+  const handleUnlock = async () => {
+    // Check if beta mode is enabled
+    try {
+      const response = await fetch('/api/beta-status');
+      const { betaMode } = await response.json();
+
+      if (betaMode) {
+        // Beta mode enabled - skip payment and unlock directly
+        setIsUnlocked(true);
+        console.log('Beta mode enabled - skipping payment');
+        return;
+      }
+    } catch (error) {
+      console.error('Error checking beta status:', error);
+    }
+
     // Navigate to payment page
     router.push('/payment');
   };
