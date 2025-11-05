@@ -410,18 +410,11 @@ export default function Home() {
   }, [resume, goals, requirements]);
 
   const handleStartOver = () => {
+    // Clear localStorage
     localStorage.removeItem(LOCAL_STORAGE_KEY);
-    setResume('');
-    setGoals('');
-    setRequirements('');
-    setSummary('');
-    setDetails('');
-    setRefinedCopy('');
-    setCoverLetter('');
-    setError(null);
-    setIsLoading(false);
-    setIsUnlocked(false);
-    setStep('input');
+
+    // Refresh the page to reset everything
+    window.location.reload();
   };
 
   const handleUnlock = async () => {
