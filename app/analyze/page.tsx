@@ -273,19 +273,36 @@ export default function Home() {
         };
 
         const findContentInCodeBlock = (text: string): string => {
+          // Try to find content in code blocks with various formats
           const codeBlockRegex = /```(?:[a-zA-Z]*\n)?([\s\S]+?)```/;
           const match = text.match(codeBlockRegex);
           if (match && match[1]) {
             return match[1].trim();
           }
-          return cleanMarkdownCode(text);
+
+          // If no code block found, check if the text itself looks like it's already clean content
+          const cleaned = cleanMarkdownCode(text);
+
+          // If cleaned text is too short but original text is longer,
+          // the content might not be in a code block at all
+          if (cleaned.length < 100 && text.length > 100) {
+            // Return the raw text without the ending marker
+            return text.trim();
+          }
+
+          return cleaned;
         };
 
         // Update sections progressively
+        // Extract all sections in the correct order from the prompt
         const summaryText = cleanMarkdownCode(extractSection(accumulatedText, 'Overall Summary', 'Section-by-Section Breakdown'));
+
+        // Details includes: Section-by-Section Breakdown + Tailoring + Final Polish (everything before Refined Resume Copy)
         const detailsText = cleanMarkdownCode(extractSection(accumulatedText, 'Section-by-Section Breakdown', 'Refined Resume Copy'));
+
         const refinedCopySection = extractSection(accumulatedText, 'Refined Resume Copy', 'Cover Letter Draft');
         const refinedCopyText = findContentInCodeBlock(refinedCopySection);
+
         const coverLetterSection = extractSection(accumulatedText, 'Cover Letter Draft');
         const coverLetterText = findContentInCodeBlock(coverLetterSection);
 
@@ -350,21 +367,46 @@ export default function Home() {
       };
 
       const findContentInCodeBlock = (text: string): string => {
+        // Try to find content in code blocks with various formats
         const codeBlockRegex = /```(?:[a-zA-Z]*\n)?([\s\S]+?)```/;
         const match = text.match(codeBlockRegex);
         if (match && match[1]) {
           return match[1].trim();
         }
-        return cleanMarkdownCode(text);
+
+        // If no code block found, check if the text itself looks like it's already clean content
+        const cleaned = cleanMarkdownCode(text);
+
+        // If cleaned text is too short but original text is longer,
+        // the content might not be in a code block at all
+        if (cleaned.length < 100 && text.length > 100) {
+          // Return the raw text without the ending marker
+          return text.trim();
+        }
+
+        return cleaned;
       };
 
       // Final processing after streaming completes
+      // Extract all sections in the correct order from the prompt
       const summaryText = cleanMarkdownCode(extractSection(feedback, 'Overall Summary', 'Section-by-Section Breakdown'));
+
+      // Details includes: Section-by-Section Breakdown + Tailoring + Final Polish (everything before Refined Resume Copy)
       const detailsText = cleanMarkdownCode(extractSection(feedback, 'Section-by-Section Breakdown', 'Refined Resume Copy'));
+
       const refinedCopySection = extractSection(feedback, 'Refined Resume Copy', 'Cover Letter Draft');
       const refinedCopyText = findContentInCodeBlock(refinedCopySection);
+
       const coverLetterSection = extractSection(feedback, 'Cover Letter Draft');
       const coverLetterText = findContentInCodeBlock(coverLetterSection);
+
+      // Debug logging to see what we extracted
+      if (!refinedCopyText || refinedCopyText.length < 50) {
+        console.log('Refined copy extraction failed or too short');
+        console.log('Refined copy section length:', refinedCopySection.length);
+        console.log('Refined copy section preview:', refinedCopySection.substring(0, 200));
+        console.log('Full feedback length:', feedback.length);
+      }
 
       // Set final values (these should already be set by streaming callback)
       setSummary(summaryText || 'Summary not generated.');
