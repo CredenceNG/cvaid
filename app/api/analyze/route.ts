@@ -70,7 +70,20 @@ export async function POST(request: NextRequest) {
 
     ---
     ### Refined Resume Copy
-    Provide a complete, rewritten version of the resume based on all your recommendations. This should be a clean copy that the user can use directly${hasRequirements ? ", perfectly tailored to the target position requirements" : ""}. Present it clearly under this heading, formatted as clean markdown.
+    Provide a complete, rewritten version of the resume based on all your recommendations. This should be a clean copy that the user can use directly${hasRequirements ? ", perfectly tailored to the target position requirements" : ""}. ${hasRequirements ? `
+
+    **CRITICAL INSTRUCTIONS FOR TAILORING:**
+    1. **Identify the Top 5 Most Important Requirements** from the target position (technical skills, experiences, qualifications, or responsibilities).
+    2. **For each top requirement**, strategically reframe existing experiences and achievements from the original resume to directly address and demonstrate how the candidate meets that requirement. Use specific examples and metrics wherever possible.
+    3. **Professional Summary**: Open with a powerful summary that immediately highlights alignment with the 3-5 most critical requirements. Use exact keywords from the job posting.
+    4. **Experience Section Reframing**: For each work experience bullet point, prioritize and prominently feature accomplishments that directly map to target requirements. Restructure and reorder bullet points to lead with the most relevant achievements for this specific role.
+    5. **Skills Section**: List skills in order of relevance to the target position, ensuring all required technical skills and tools mentioned in the requirements are prominently featured (if the candidate has them).
+    6. **Bridge Gaps Strategically**: If certain requirements aren't directly met, highlight transferable skills, related experiences, or adjacent competencies that demonstrate the candidate's ability to quickly learn or adapt.
+    7. **Use Job-Specific Language**: Mirror the terminology, phrases, and technical vocabulary used in the target position requirements throughout the resume to pass ATS systems and resonate with hiring managers.
+
+    The goal is to make it immediately obvious to the reader how this candidate is an excellent match for this specific role by explicitly connecting their background to what the employer is seeking.` : ""}
+
+    Present it clearly under this heading, formatted as clean markdown.
 
     ---
     ### Cover Letter Draft
@@ -78,7 +91,7 @@ export async function POST(request: NextRequest) {
     `;
 
     const result = await ai.models.generateContent({
-      model: 'gemini-2.0-flash-exp',
+      model: 'gemini-2.5-flash',
       contents: prompt,
     });
 
