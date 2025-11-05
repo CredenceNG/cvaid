@@ -90,14 +90,36 @@ export async function POST(request: NextRequest) {
     Based on the resume and job details, write a compelling and professional cover letter. The letter should highlight the user's most relevant skills and experiences, express enthusiasm for the role, and include a clear call to action. Address it to "Hiring Manager" if no specific contact is available. Keep it concise and impactful, around 3-4 paragraphs. Format it as clean markdown.
     `;
 
-    const result = await ai.models.generateContent({
+    // Use streaming for better UX and to avoid timeouts
+    const resultStream = await ai.models.generateContentStream({
       model: 'gemini-2.5-flash',
       contents: prompt,
     });
 
-    const feedback = result.text;
+    // Create a ReadableStream to stream the response
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const chunk of resultStream) {
+            const text = chunk.text;
+            if (text) {
+              controller.enqueue(encoder.encode(text));
+            }
+          }
+          controller.close();
+        } catch (error) {
+          controller.error(error);
+        }
+      },
+    });
 
-    return NextResponse.json({ feedback });
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Transfer-Encoding': 'chunked',
+      },
+    });
   } catch (error) {
     console.error('Error generating AI feedback:', error);
     return NextResponse.json(

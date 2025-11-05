@@ -16,7 +16,12 @@ type Step = 'input' | 'summary' | 'details' | 'refined' | 'coverLetter';
 const LOCAL_STORAGE_KEY = 'resumeOptimizerState';
 
 // Service functions
-const getResumeFeedback = async (resumeText: string, jobGoals: string, targetRequirements: string): Promise<string> => {
+const getResumeFeedback = async (
+  resumeText: string,
+  jobGoals: string,
+  targetRequirements: string,
+  onChunk?: (chunk: string) => void
+): Promise<string> => {
   try {
     const response = await fetch('/api/analyze', {
       method: 'POST',
@@ -31,12 +36,44 @@ const getResumeFeedback = async (resumeText: string, jobGoals: string, targetReq
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to analyze resume');
+      const errorText = await response.text();
+      let errorMessage = 'Failed to analyze resume';
+      try {
+        const error = JSON.parse(errorText);
+        errorMessage = error.error || errorMessage;
+      } catch {
+        // If not JSON, use the text as is
+        errorMessage = errorText || errorMessage;
+      }
+      throw new Error(errorMessage);
     }
 
-    const data = await response.json();
-    return data.feedback;
+    // Handle streaming response
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+    let fullText = '';
+
+    if (!reader) {
+      throw new Error('Response body is not readable');
+    }
+
+    while (true) {
+      const { done, value } = await reader.read();
+
+      if (done) {
+        break;
+      }
+
+      const chunk = decoder.decode(value, { stream: true });
+      fullText += chunk;
+
+      // Call the callback with each chunk for progressive display
+      if (onChunk) {
+        onChunk(chunk);
+      }
+    }
+
+    return fullText;
   } catch (error) {
     console.error("Error generating content from AI:", error);
     throw new Error("Failed to communicate with the AI service.");
@@ -166,14 +203,96 @@ export default function Home() {
 
     setIsLoading(true);
     setError(null);
-    setStep('input');
+    setStep('summary');
+
+    // Clear previous content
+    setSummary('');
+    setDetails('');
+    setRefinedCopy('');
+    setCoverLetter('');
 
     setTimeout(() => {
       resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 100);
 
     try {
-      const feedback = await getResumeFeedback(resume, goals, requirements);
+      let accumulatedText = '';
+
+      const feedback = await getResumeFeedback(resume, goals, requirements, (chunk) => {
+        // Accumulate chunks for progressive display
+        accumulatedText += chunk;
+
+        // Extract and update sections as content streams in
+        const extractSection = (text: string, startHeadingText: string, endHeadingText?: string): string => {
+          const findHeading = (haystack: string, needle: string, fromIndex: number = 0): { index: number, fullHeading: string } | null => {
+            const prefixes = ['###', '##', '#', '####', '#####', '######'];
+            for (const prefix of prefixes) {
+              const fullHeading = `${prefix} ${needle}`;
+              const index = haystack.indexOf(fullHeading, fromIndex);
+              if (index !== -1) {
+                return { index, fullHeading };
+              }
+            }
+            const boldHeading = `**${needle}**`;
+            const boldIndex = haystack.indexOf(boldHeading, fromIndex);
+            if (boldIndex !== -1) {
+              return { index: boldIndex, fullHeading: boldHeading };
+            }
+            return null;
+          };
+
+          const startResult = findHeading(text, startHeadingText);
+          if (!startResult) return '';
+
+          const contentStartIndex = startResult.index + startResult.fullHeading.length;
+          let endIndex = text.length;
+
+          if (endHeadingText) {
+            const endResult = findHeading(text, endHeadingText, contentStartIndex);
+            if (endResult) {
+              endIndex = endResult.index;
+            }
+          }
+          return text.substring(contentStartIndex, endIndex).trim();
+        };
+
+        const cleanMarkdownCode = (text: string): string => {
+          let cleanedText = text.trim();
+          if (cleanedText.startsWith('```') && cleanedText.endsWith('```')) {
+            cleanedText = cleanedText.substring(3, cleanedText.length - 3).trim();
+            const firstLineEnd = cleanedText.indexOf('\n');
+            if (firstLineEnd !== -1) {
+              const firstLine = cleanedText.substring(0, firstLineEnd).trim();
+              if (firstLine.length > 0 && !firstLine.includes(' ') && firstLine.match(/^[a-z]+$/)) {
+                cleanedText = cleanedText.substring(firstLineEnd + 1).trim();
+              }
+            }
+          }
+          return cleanedText;
+        };
+
+        const findContentInCodeBlock = (text: string): string => {
+          const codeBlockRegex = /```(?:[a-zA-Z]*\n)?([\s\S]+?)```/;
+          const match = text.match(codeBlockRegex);
+          if (match && match[1]) {
+            return match[1].trim();
+          }
+          return cleanMarkdownCode(text);
+        };
+
+        // Update sections progressively
+        const summaryText = cleanMarkdownCode(extractSection(accumulatedText, 'Overall Summary', 'Section-by-Section Breakdown'));
+        const detailsText = cleanMarkdownCode(extractSection(accumulatedText, 'Section-by-Section Breakdown', 'Refined Resume Copy'));
+        const refinedCopySection = extractSection(accumulatedText, 'Refined Resume Copy', 'Cover Letter Draft');
+        const refinedCopyText = findContentInCodeBlock(refinedCopySection);
+        const coverLetterSection = extractSection(accumulatedText, 'Cover Letter Draft');
+        const coverLetterText = findContentInCodeBlock(coverLetterSection);
+
+        if (summaryText) setSummary(summaryText);
+        if (detailsText) setDetails(detailsText);
+        if (refinedCopyText) setRefinedCopy(refinedCopyText);
+        if (coverLetterText) setCoverLetter(coverLetterText);
+      });
 
       const extractSection = (text: string, startHeadingText: string, endHeadingText?: string): string => {
         const findHeading = (haystack: string, needle: string, fromIndex: number = 0): { index: number, fullHeading: string } | null => {
@@ -232,6 +351,7 @@ export default function Home() {
         return cleanMarkdownCode(text);
       };
 
+      // Final processing after streaming completes
       const summaryText = cleanMarkdownCode(extractSection(feedback, 'Overall Summary', 'Section-by-Section Breakdown'));
       const detailsText = cleanMarkdownCode(extractSection(feedback, 'Section-by-Section Breakdown', 'Refined Resume Copy'));
       const refinedCopySection = extractSection(feedback, 'Refined Resume Copy', 'Cover Letter Draft');
@@ -239,6 +359,7 @@ export default function Home() {
       const coverLetterSection = extractSection(feedback, 'Cover Letter Draft');
       const coverLetterText = findContentInCodeBlock(coverLetterSection);
 
+      // Set final values (these should already be set by streaming callback)
       setSummary(summaryText || 'Summary not generated.');
       setDetails(detailsText || 'Detailed breakdown not generated.');
       setRefinedCopy(refinedCopyText || 'Refined copy not generated.');
