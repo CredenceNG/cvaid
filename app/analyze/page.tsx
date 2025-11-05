@@ -203,7 +203,7 @@ export default function Home() {
 
     setIsLoading(true);
     setError(null);
-    setStep('summary');
+    setStep('input'); // Keep on input/loading state until content arrives
 
     // Clear previous content
     setSummary('');
@@ -217,6 +217,7 @@ export default function Home() {
 
     try {
       let accumulatedText = '';
+      let hasSetStep = false; // Track if we've switched to summary step
 
       const feedback = await getResumeFeedback(resume, goals, requirements, (chunk) => {
         // Accumulate chunks for progressive display
@@ -287,6 +288,12 @@ export default function Home() {
         const refinedCopyText = findContentInCodeBlock(refinedCopySection);
         const coverLetterSection = extractSection(accumulatedText, 'Cover Letter Draft');
         const coverLetterText = findContentInCodeBlock(coverLetterSection);
+
+        // Switch to summary step once we have actual summary content
+        if (!hasSetStep && summaryText && summaryText.length > 50) {
+          setStep('summary');
+          hasSetStep = true;
+        }
 
         if (summaryText) setSummary(summaryText);
         if (detailsText) setDetails(detailsText);
@@ -386,7 +393,13 @@ export default function Home() {
         return;
       }
 
-      setStep('summary');
+      // Ensure we're on summary step (in case streaming didn't trigger it)
+      if (summaryText) {
+        setStep('summary');
+      } else {
+        // If no content was generated, show error
+        setError('No content was generated. Please try again.');
+      }
 
     } catch (err) {
       console.error(err);
