@@ -273,8 +273,13 @@ export default function Home() {
         };
 
         const findContentInCodeBlock = (text: string): string => {
+          if (!text || text.length === 0) {
+            return '';
+          }
+
           // Try to find content in code blocks with various formats
-          const codeBlockRegex = /```(?:[a-zA-Z]*\n)?([\s\S]+?)```/;
+          // Match ```markdown, ```md, ``` or any other language specifier
+          const codeBlockRegex = /```[\w]*\s*([\s\S]+?)```/;
           const match = text.match(codeBlockRegex);
           if (match && match[1]) {
             return match[1].trim();
@@ -284,9 +289,8 @@ export default function Home() {
           const cleaned = cleanMarkdownCode(text);
 
           // If cleaned text is too short but original text is longer,
-          // the content might not be in a code block at all
-          if (cleaned.length < 100 && text.length > 100) {
-            // Return the raw text without the ending marker
+          // the content might not be in a code block at all - return raw text
+          if (cleaned.length < 100 && text.length > 200) {
             return text.trim();
           }
 
@@ -367,8 +371,13 @@ export default function Home() {
       };
 
       const findContentInCodeBlock = (text: string): string => {
+        if (!text || text.length === 0) {
+          return '';
+        }
+
         // Try to find content in code blocks with various formats
-        const codeBlockRegex = /```(?:[a-zA-Z]*\n)?([\s\S]+?)```/;
+        // Match ```markdown, ```md, ``` or any other language specifier
+        const codeBlockRegex = /```[\w]*\s*([\s\S]+?)```/;
         const match = text.match(codeBlockRegex);
         if (match && match[1]) {
           return match[1].trim();
@@ -378,9 +387,8 @@ export default function Home() {
         const cleaned = cleanMarkdownCode(text);
 
         // If cleaned text is too short but original text is longer,
-        // the content might not be in a code block at all
-        if (cleaned.length < 100 && text.length > 100) {
-          // Return the raw text without the ending marker
+        // the content might not be in a code block at all - return raw text
+        if (cleaned.length < 100 && text.length > 200) {
           return text.trim();
         }
 
@@ -401,11 +409,22 @@ export default function Home() {
       const coverLetterText = findContentInCodeBlock(coverLetterSection);
 
       // Debug logging to see what we extracted
+      console.log('=== Extraction Debug ===');
+      console.log('Summary length:', summaryText?.length || 0);
+      console.log('Details length:', detailsText?.length || 0);
+      console.log('Refined copy section length:', refinedCopySection?.length || 0);
+      console.log('Refined copy text length:', refinedCopyText?.length || 0);
+      console.log('Cover letter section length:', coverLetterSection?.length || 0);
+      console.log('Cover letter text length:', coverLetterText?.length || 0);
+
       if (!refinedCopyText || refinedCopyText.length < 50) {
-        console.log('Refined copy extraction failed or too short');
-        console.log('Refined copy section length:', refinedCopySection.length);
-        console.log('Refined copy section preview:', refinedCopySection.substring(0, 200));
-        console.log('Full feedback length:', feedback.length);
+        console.warn('⚠️ Refined copy extraction failed or too short');
+        console.log('Refined copy section preview:', refinedCopySection?.substring(0, 300));
+      }
+
+      if (!coverLetterText || coverLetterText.length < 50) {
+        console.warn('⚠️ Cover letter extraction failed or too short');
+        console.log('Cover letter section preview:', coverLetterSection?.substring(0, 300));
       }
 
       // Set final values (these should already be set by streaming callback)
