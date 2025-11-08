@@ -94,6 +94,10 @@ export async function POST(request: NextRequest) {
     const resultStream = await ai.models.generateContentStream({
       model: 'gemini-2.5-flash',
       contents: prompt,
+      config: {
+        maxOutputTokens: 8192, // Increase max output length to ensure we get all sections
+        temperature: 0.7,
+      },
     });
 
     // Create a ReadableStream to stream the response
