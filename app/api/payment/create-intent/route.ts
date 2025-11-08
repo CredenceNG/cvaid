@@ -10,9 +10,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
-const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2025-09-30.clover'  // Latest version matching your Stripe account
-}) : null;
+const stripe = process.env.STRIPE_SECRET_KEY
+  ? new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2025-09-30.clover'  // Latest version matching your Stripe account
+    })
+  : null;
 
 // Resume analysis pricing
 const RESUME_ANALYSIS_PRICE = 500; // $5.00 in cents
@@ -23,8 +25,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { email } = body;
 
-    // Verify Stripe key
-    if (!process.env.STRIPE_SECRET_KEY) {
+    // Verify Stripe is configured
+    if (!stripe) {
       return NextResponse.json(
         { error: 'Payment system not configured' },
         { status: 500 }
@@ -45,12 +47,12 @@ export async function POST(request: NextRequest) {
       },
       description: 'Resume Analysis - Full Feedback & Refined Copy',
       ...(email && { receipt_email: email }), // Send receipt if email provided
-    }) : null;
+    });
 
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
       amount: RESUME_ANALYSIS_PRICE,
-    }) : null;
+    });
   } catch (error) {
     console.error('Error creating PaymentIntent:', error);
 

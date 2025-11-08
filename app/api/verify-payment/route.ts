@@ -1,12 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
-const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2025-09-30.clover',
-}) : null;
+const stripe = process.env.STRIPE_SECRET_KEY
+  ? new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2025-09-30.clover',
+    })
+  : null;
 
 export async function POST(request: NextRequest) {
   try {
+    if (!stripe) {
+      return NextResponse.json(
+        { error: 'Payment system not configured' },
+        { status: 500 }
+      );
+    }
+
     const body = await request.json();
     const { sessionId, paymentIntentId } = body;
 
@@ -23,12 +32,12 @@ export async function POST(request: NextRequest) {
           amountTotal: paymentIntent.amount,
           currency: paymentIntent.currency,
           accessToken: Buffer.from(`${paymentIntentId}:${Date.now()}`).toString('base64'),
-        }) : null;
+        });
       } else {
         return NextResponse.json({
           success: false,
           paymentStatus: paymentIntent.status,
-        }) : null;
+        });
       }
     } else if (sessionId) {
       // Old payment flow using Checkout Session (backward compatibility)
@@ -42,12 +51,12 @@ export async function POST(request: NextRequest) {
           amountTotal: session.amount_total,
           currency: session.currency,
           accessToken: Buffer.from(`${sessionId}:${Date.now()}`).toString('base64'),
-        }) : null;
+        });
       } else {
         return NextResponse.json({
           success: false,
           paymentStatus: session.payment_status,
-        }) : null;
+        });
       }
     } else {
       return NextResponse.json(
