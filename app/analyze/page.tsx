@@ -52,26 +52,46 @@ const getResumeFeedback = async (
     const reader = response.body?.getReader();
     const decoder = new TextDecoder();
     let fullText = '';
+    let chunkCount = 0;
 
     if (!reader) {
       throw new Error('Response body is not readable');
     }
 
+    console.log('📡 Starting to read stream...');
+
     while (true) {
       const { done, value } = await reader.read();
 
       if (done) {
+        console.log(`✅ Stream complete. Total chunks: ${chunkCount}, Total length: ${fullText.length}`);
         break;
       }
 
+      chunkCount++;
       const chunk = decoder.decode(value, { stream: true });
       fullText += chunk;
+
+      if (chunkCount % 10 === 0) {
+        console.log(`📦 Chunk ${chunkCount}, Current length: ${fullText.length}`);
+      }
 
       // Call the callback with each chunk for progressive display
       if (onChunk) {
         onChunk(chunk);
       }
     }
+
+    // Final decode to flush any remaining bytes
+    const finalChunk = decoder.decode();
+    if (finalChunk) {
+      fullText += finalChunk;
+      console.log(`🔚 Final chunk added: ${finalChunk.length} chars`);
+    }
+
+    console.log(`📊 Final feedback length: ${fullText.length}`);
+    console.log(`📝 Contains "Refined Resume Copy": ${fullText.includes('Refined Resume Copy')}`);
+    console.log(`📝 Contains "Cover Letter Draft": ${fullText.includes('Cover Letter Draft')}`);
 
     return fullText;
   } catch (error) {
