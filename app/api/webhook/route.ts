@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2025-09-30.clover',
-});
+}) : null;
 
 export async function POST(request: NextRequest) {
   const sig = request.headers.get('stripe-signature');
@@ -56,5 +56,5 @@ export async function POST(request: NextRequest) {
       console.log(`Unhandled event type ${event.type}`);
   }
 
-  return NextResponse.json({ received: true });
+  return NextResponse.json({ received: true }) : null;
 }
