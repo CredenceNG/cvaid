@@ -410,12 +410,17 @@ export default function Home() {
 
       // Debug logging to see what we extracted
       console.log('=== Extraction Debug ===');
+      console.log('Full feedback length:', feedback?.length || 0);
       console.log('Summary length:', summaryText?.length || 0);
       console.log('Details length:', detailsText?.length || 0);
       console.log('Refined copy section length:', refinedCopySection?.length || 0);
       console.log('Refined copy text length:', refinedCopyText?.length || 0);
       console.log('Cover letter section length:', coverLetterSection?.length || 0);
       console.log('Cover letter text length:', coverLetterText?.length || 0);
+
+      // Check if the headings exist in the feedback
+      console.log('Contains "Refined Resume Copy":', feedback?.includes('Refined Resume Copy'));
+      console.log('Contains "Cover Letter Draft":', feedback?.includes('Cover Letter Draft'));
 
       if (!refinedCopyText || refinedCopyText.length < 50) {
         console.warn('⚠️ Refined copy extraction failed or too short');
@@ -425,6 +430,16 @@ export default function Home() {
       if (!coverLetterText || coverLetterText.length < 50) {
         console.warn('⚠️ Cover letter extraction failed or too short');
         console.log('Cover letter section preview:', coverLetterSection?.substring(0, 300));
+      }
+
+      // Save full feedback to sessionStorage for debugging
+      if (typeof sessionStorage !== 'undefined') {
+        try {
+          sessionStorage.setItem('lastFeedback', feedback || '');
+          console.log('💾 Full feedback saved to sessionStorage.getItem("lastFeedback")');
+        } catch (e) {
+          console.warn('Failed to save feedback to sessionStorage:', e);
+        }
       }
 
       // Set final values (these should already be set by streaming callback)
