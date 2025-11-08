@@ -98,17 +98,29 @@ export async function POST(request: NextRequest) {
 
     // Create a ReadableStream to stream the response
     const encoder = new TextEncoder();
+    let chunkCount = 0;
+    let totalLength = 0;
+
     const stream = new ReadableStream({
       async start(controller) {
         try {
+          console.log('🚀 Starting Gemini stream...');
           for await (const chunk of resultStream) {
             const text = chunk.text;
             if (text) {
+              chunkCount++;
+              totalLength += text.length;
               controller.enqueue(encoder.encode(text));
+
+              if (chunkCount % 10 === 0) {
+                console.log(`📤 Sent chunk ${chunkCount}, Total: ${totalLength} chars`);
+              }
             }
           }
+          console.log(`✅ Gemini stream complete. Total chunks: ${chunkCount}, Total length: ${totalLength}`);
           controller.close();
         } catch (error) {
+          console.error('❌ Gemini stream error:', error);
           controller.error(error);
         }
       },
