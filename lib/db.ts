@@ -1,33 +1,14 @@
-import Database from 'better-sqlite3';
-import path from 'path';
-import fs from 'fs';
+import { neon } from '@neondatabase/serverless';
 
-// Database file path
-const dbDir = path.join(process.cwd(), 'data');
-const dbPath = path.join(dbDir, 'emails.db');
+// Get database URL from environment
+const DATABASE_URL = process.env.DATABASE_URL;
 
-// Ensure data directory exists
-if (!fs.existsSync(dbDir)) {
-  fs.mkdirSync(dbDir, { recursive: true });
+if (!DATABASE_URL) {
+  console.warn('DATABASE_URL not set - database features will be disabled');
 }
 
-// Initialize database
-const db = new Database(dbPath);
-
-// Create tables if they don't exist
-db.exec(`
-  CREATE TABLE IF NOT EXISTS email_subscribers (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    email TEXT UNIQUE NOT NULL,
-    source TEXT DEFAULT 'landing_page',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    ip_address TEXT,
-    user_agent TEXT
-  );
-
-  CREATE INDEX IF NOT EXISTS idx_email ON email_subscribers(email);
-  CREATE INDEX IF NOT EXISTS idx_created_at ON email_subscribers(created_at);
-`);
+// Create SQL client
+const sql = DATABASE_URL ? neon(DATABASE_URL) : null;
 
 export interface EmailSubscriber {
   id?: number;
@@ -38,23 +19,52 @@ export interface EmailSubscriber {
   user_agent?: string;
 }
 
-export function saveEmail(data: EmailSubscriber): { success: boolean; id?: number; error?: string } {
+// Initialize database table (create if not exists)
+export async function initDatabase() {
+  if (!sql) return false;
+
   try {
-    const stmt = db.prepare(`
+    await sql`
+      CREATE TABLE IF NOT EXISTS email_subscribers (
+        id SERIAL PRIMARY KEY,
+        email TEXT UNIQUE NOT NULL,
+        source TEXT DEFAULT 'landing_page',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        ip_address TEXT,
+        user_agent TEXT
+      )
+    `;
+
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_email ON email_subscribers(email)
+    `;
+
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_created_at ON email_subscribers(created_at)
+    `;
+
+    return true;
+  } catch (error) {
+    console.error('Error initializing database:', error);
+    return false;
+  }
+}
+
+export async function saveEmail(data: EmailSubscriber): Promise<{ success: boolean; id?: number; error?: string }> {
+  if (!sql) {
+    return { success: false, error: 'Database not configured' };
+  }
+
+  try {
+    const result = await sql`
       INSERT INTO email_subscribers (email, source, ip_address, user_agent)
-      VALUES (?, ?, ?, ?)
-    `);
+      VALUES (${data.email}, ${data.source || 'landing_page'}, ${data.ip_address || null}, ${data.user_agent || null})
+      RETURNING id
+    `;
 
-    const result = stmt.run(
-      data.email,
-      data.source || 'landing_page',
-      data.ip_address || null,
-      data.user_agent || null
-    );
-
-    return { success: true, id: Number(result.lastInsertRowid) };
+    return { success: true, id: result[0].id };
   } catch (error: unknown) {
-    if (error instanceof Error && 'code' in error && error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+    if (error instanceof Error && error.message.includes('unique constraint')) {
       return { success: false, error: 'Email already subscribed' };
     }
     console.error('Error saving email:', error);
@@ -62,20 +72,46 @@ export function saveEmail(data: EmailSubscriber): { success: boolean; id?: numbe
   }
 }
 
-export function getAllEmails(): EmailSubscriber[] {
-  const stmt = db.prepare('SELECT * FROM email_subscribers ORDER BY created_at DESC');
-  return stmt.all() as EmailSubscriber[];
+export async function getAllEmails(): Promise<EmailSubscriber[]> {
+  if (!sql) return [];
+
+  try {
+    const result = await sql`
+      SELECT * FROM email_subscribers ORDER BY created_at DESC
+    `;
+    return result as EmailSubscriber[];
+  } catch (error) {
+    console.error('Error getting emails:', error);
+    return [];
+  }
 }
 
-export function getEmailCount(): number {
-  const stmt = db.prepare('SELECT COUNT(*) as count FROM email_subscribers');
-  const result = stmt.get() as { count: number };
-  return result.count;
+export async function getEmailCount(): Promise<number> {
+  if (!sql) return 0;
+
+  try {
+    const result = await sql`
+      SELECT COUNT(*) as count FROM email_subscribers
+    `;
+    return Number(result[0].count);
+  } catch (error) {
+    console.error('Error getting email count:', error);
+    return 0;
+  }
 }
 
-export function getRecentEmails(limit: number = 10): EmailSubscriber[] {
-  const stmt = db.prepare('SELECT * FROM email_subscribers ORDER BY created_at DESC LIMIT ?');
-  return stmt.all(limit) as EmailSubscriber[];
+export async function getRecentEmails(limit: number = 10): Promise<EmailSubscriber[]> {
+  if (!sql) return [];
+
+  try {
+    const result = await sql`
+      SELECT * FROM email_subscribers ORDER BY created_at DESC LIMIT ${limit}
+    `;
+    return result as EmailSubscriber[];
+  } catch (error) {
+    console.error('Error getting recent emails:', error);
+    return [];
+  }
 }
 
-export default db;
+export default sql;

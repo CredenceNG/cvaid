@@ -24,12 +24,12 @@ export async function GET(request: NextRequest) {
 
     let emails;
     if (limit) {
-      emails = getRecentEmails(parseInt(limit));
+      emails = await getRecentEmails(parseInt(limit));
     } else {
-      emails = getAllEmails();
+      emails = await getAllEmails();
     }
 
-    const count = getEmailCount();
+    const count = await getEmailCount();
 
     // Return CSV format if requested
     if (format === 'csv') {

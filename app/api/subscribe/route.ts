@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { saveEmail } from '@/lib/db';
+import { saveEmail, initDatabase } from '@/lib/db';
+
+// Initialize database on first load
+let dbInitialized = false;
 
 export async function POST(request: NextRequest) {
+  // Initialize database table if not done yet
+  if (!dbInitialized) {
+    await initDatabase();
+    dbInitialized = true;
+  }
   try {
     const body = await request.json();
     const { email } = body;
@@ -30,7 +38,7 @@ export async function POST(request: NextRequest) {
     const userAgent = request.headers.get('user-agent') || 'unknown';
 
     // Save email to database
-    const result = saveEmail({
+    const result = await saveEmail({
       email: email.toLowerCase().trim(),
       source: 'landing_page',
       ip_address: ipAddress,
