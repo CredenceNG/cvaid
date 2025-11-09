@@ -98,9 +98,25 @@ export default function LandingPage() {
     setMessage('');
 
     try {
-      // Store email in localStorage and redirect to analyze page
-      localStorage.setItem('userEmail', email);
-      router.push('/analyze');
+      // Save email to database
+      const response = await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Store email in localStorage and redirect to analyze page
+        localStorage.setItem('userEmail', email);
+        router.push('/analyze');
+      } else {
+        setMessage(data.error || 'Something went wrong. Please try again.');
+        setIsSubmitting(false);
+      }
     } catch {
       setMessage('Something went wrong. Please try again.');
       setIsSubmitting(false);
