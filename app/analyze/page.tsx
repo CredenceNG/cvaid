@@ -100,6 +100,49 @@ const getResumeFeedback = async (
   }
 };
 
+// Generate a specific section if it's missing
+const generateMissingSection = async (
+  section: 'refined_resume' | 'cover_letter',
+  resume: string,
+  goals: string,
+  requirements: string,
+  existingAnalysis?: string
+): Promise<string> => {
+  try {
+    console.log(`🔄 Generating missing ${section}...`);
+
+    const response = await fetch('/api/generate-section', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        resume,
+        goals,
+        requirements,
+        section,
+        existingAnalysis,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to generate ${section}`);
+    }
+
+    const data = await response.json();
+
+    if (data.success && data.content) {
+      console.log(`✅ Successfully generated ${section} (${data.content.length} chars)`);
+      return data.content;
+    }
+
+    throw new Error('No content in response');
+  } catch (error) {
+    console.error(`Error generating ${section}:`, error);
+    throw error;
+  }
+};
+
 const verifyPayment = async (sessionId: string) => {
   try {
     const response = await fetch('/api/verify-payment', {
@@ -465,14 +508,60 @@ export default function Home() {
       // Set final values (these should already be set by streaming callback)
       setSummary(summaryText || 'Summary not generated.');
       setDetails(detailsText || 'Detailed breakdown not generated.');
-      setRefinedCopy(refinedCopyText || 'Refined copy not generated.');
-      setCoverLetter(coverLetterText || 'Cover letter not generated.');
+
+      // QA: Check for missing sections and generate them with fallback API
+      let finalRefinedCopy = refinedCopyText;
+      let finalCoverLetter = coverLetterText;
+
+      const MIN_CONTENT_LENGTH = 100; // Minimum characters for valid content
+
+      // Generate missing refined resume if needed
+      if (!refinedCopyText || refinedCopyText.length < MIN_CONTENT_LENGTH) {
+        console.log('⚠️ Refined resume missing or too short, calling fallback API...');
+        try {
+          setRefinedCopy('Generating refined resume...');
+          finalRefinedCopy = await generateMissingSection(
+            'refined_resume',
+            resume,
+            goals,
+            requirements,
+            feedback?.substring(0, 3000) // Pass some analysis context
+          );
+          console.log(`✅ Fallback generated refined resume (${finalRefinedCopy.length} chars)`);
+        } catch (fallbackError) {
+          console.error('Failed to generate refined resume via fallback:', fallbackError);
+          finalRefinedCopy = 'Refined copy not generated. Please try again.';
+        }
+      }
+
+      // Generate missing cover letter if needed
+      if (!finalCoverLetter || finalCoverLetter.length < MIN_CONTENT_LENGTH) {
+        console.log('⚠️ Cover letter missing or too short, calling fallback API...');
+        try {
+          setCoverLetter('Generating cover letter...');
+          finalCoverLetter = await generateMissingSection(
+            'cover_letter',
+            resume,
+            goals,
+            requirements,
+            feedback?.substring(0, 3000) // Pass some analysis context
+          );
+          console.log(`✅ Fallback generated cover letter (${finalCoverLetter.length} chars)`);
+        } catch (fallbackError) {
+          console.error('Failed to generate cover letter via fallback:', fallbackError);
+          finalCoverLetter = 'Cover letter not generated. Please try again.';
+        }
+      }
+
+      // Set the final values (either from extraction or fallback)
+      setRefinedCopy(finalRefinedCopy);
+      setCoverLetter(finalCoverLetter);
 
       const stateToSave = {
         summary: summaryText,
         details: detailsText,
-        refinedCopy: refinedCopyText,
-        coverLetter: coverLetterText,
+        refinedCopy: finalRefinedCopy,
+        coverLetter: finalCoverLetter,
         step: 'summary',
         resume,
         goals,

@@ -70,24 +70,54 @@ export async function POST(request: NextRequest) {
 
     ---
     ### Refined Resume Copy
-    Provide a complete, rewritten version of the resume based on all your recommendations. This should be a clean copy that the user can use directly${hasRequirements ? ", perfectly tailored to the target position requirements" : ""}. ${hasRequirements ? `
+    Provide a complete, rewritten version of the resume based on all your recommendations. This should be a clean copy that the user can use directly${hasRequirements ? ", perfectly tailored to the target position requirements" : ""}.
 
-    **CRITICAL INSTRUCTIONS FOR TAILORING:**
-    1. **Identify the Top 5 Most Important Requirements** from the target position (technical skills, experiences, qualifications, or responsibilities).
-    2. **For each top requirement**, strategically reframe existing experiences and achievements from the original resume to directly address and demonstrate how the candidate meets that requirement. Use specific examples and metrics wherever possible.
-    3. **Professional Summary**: Open with a powerful summary that immediately highlights alignment with the 3-5 most critical requirements. Use exact keywords from the job posting.
-    4. **Experience Section Reframing**: For each work experience bullet point, prioritize and prominently feature accomplishments that directly map to target requirements. Restructure and reorder bullet points to lead with the most relevant achievements for this specific role.
-    5. **Skills Section**: List skills in order of relevance to the target position, ensuring all required technical skills and tools mentioned in the requirements are prominently featured (if the candidate has them).
-    6. **Bridge Gaps Strategically**: If certain requirements aren't directly met, highlight transferable skills, related experiences, or adjacent competencies that demonstrate the candidate's ability to quickly learn or adapt.
-    7. **Use Job-Specific Language**: Mirror the terminology, phrases, and technical vocabulary used in the target position requirements throughout the resume to pass ATS systems and resonate with hiring managers.
-
-    The goal is to make it immediately obvious to the reader how this candidate is an excellent match for this specific role by explicitly connecting their background to what the employer is seeking.` : ""}
-
-    Present it clearly under this heading, formatted as clean markdown.
+    **CRITICAL FORMATTING INSTRUCTIONS:**
+    - Output the resume as PLAIN TEXT with clean formatting - NO markdown code blocks, NO \`\`\` markers
+    - Use simple text formatting: ALL CAPS for section headers, dashes or bullets for lists
+    - Do NOT wrap the resume in any code blocks or markdown syntax
+    - The output should be copy-paste ready for a word processor
+    ${hasRequirements ? `
+    **CRITICAL INSTRUCTIONS FOR TAILORING TO JOB REQUIREMENTS:**
+    1. **Extract Key Requirements**: Identify the top 5-7 most important requirements from the target position (must-have skills, required experience, key responsibilities).
+    2. **Keyword Integration**: Use EXACT keywords and phrases from the job requirements throughout the resume. If the job says "project management", use "project management" - not "managing projects".
+    3. **Professional Summary**: Write a 3-4 sentence summary that directly addresses the top 3 requirements. Start with "[Years] of experience in [relevant field]" and explicitly mention key required skills.
+    4. **Experience Bullets - STAR + Keywords**: Rewrite each bullet using:
+       - A strong action verb
+       - The specific task/responsibility (using job requirement keywords)
+       - Quantifiable results with numbers/percentages
+       - Example: "Led cross-functional team of 8 engineers to deliver [specific project type from requirements], reducing deployment time by 40%"
+    5. **Skills Section**: List skills in this exact order:
+       - Required skills from job posting (first)
+       - Preferred/nice-to-have skills (second)
+       - Other relevant skills (last)
+    6. **Address Requirements Gaps**: If the candidate lacks a required skill, highlight the closest transferable experience or related competency.
+    7. **ATS Optimization**: Include exact job title variations, tool names, and certifications mentioned in requirements.` : `
+    **FORMATTING GUIDELINES:**
+    - Professional Summary: 3-4 impactful sentences
+    - Experience: Use action verbs and quantify achievements
+    - Skills: Organize by category (Technical, Soft Skills, Tools)`}
 
     ---
     ### Cover Letter Draft
-    Based on the resume and job details, write a compelling and professional cover letter. The letter should highlight the user's most relevant skills and experiences, express enthusiasm for the role, and include a clear call to action. Address it to "Hiring Manager" if no specific contact is available. Keep it concise and impactful, around 3-4 paragraphs. Format it as clean markdown.
+    Write a compelling cover letter tailored to ${hasRequirements ? "the specific job requirements provided" : "the user's career goals"}.
+
+    **CRITICAL FORMATTING INSTRUCTIONS:**
+    - Output as PLAIN TEXT - NO markdown code blocks, NO \`\`\` markers
+    - Use standard business letter format
+    - Do NOT wrap in code blocks
+
+    **CONTENT REQUIREMENTS:**
+    ${hasRequirements ? `
+    - **Opening Paragraph**: Reference the specific position and company (if mentioned). Hook with your most relevant qualification that matches their #1 requirement.
+    - **Body Paragraph 1**: Address 2-3 key requirements from the job posting with specific examples from your experience. Use their exact terminology.
+    - **Body Paragraph 2**: Highlight a specific achievement with metrics that demonstrates your value. Connect it to what they're looking for.
+    - **Closing**: Express enthusiasm for this specific role, mention you're eager to discuss how your [specific skill from requirements] can benefit their team. Include call to action.` : `
+    - **Opening**: State the type of role you're seeking and your key qualification
+    - **Body**: Highlight 2-3 relevant achievements with specific results
+    - **Closing**: Express enthusiasm and include call to action`}
+
+    Keep it to 3-4 paragraphs, approximately 250-350 words. Address to "Hiring Manager" unless a specific contact is provided.
     `;
 
     // Use streaming for better UX and to avoid timeouts
